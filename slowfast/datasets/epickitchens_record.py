@@ -34,6 +34,14 @@ class EpicKitchensVideoRecord(VideoRecord):
         return int(round(timestamp_to_sec(self._series['stop_timestamp']) * self.fps))
 
     @property
+    def single_timestamp(self):
+        return self._series['single_timestamp']
+
+    @property
+    def frames_to_end(self):
+        return self._series['frames_to_end']
+
+    @property
     def fps(self):
         is_100 = len(self.untrimmed_video_name.split('_')[1]) == 3
         return 50 if is_100 else 60

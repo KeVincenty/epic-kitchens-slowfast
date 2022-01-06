@@ -39,7 +39,10 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg):
     # Enable train mode.
     model.train()
     if cfg.BN.FREEZE:
-        model.module.freeze_fn('bn_statistics')
+        try:
+            model.module.freeze_fn('bn_statistics')
+        except:
+            model.freeze_fn('bn_statistics')
 
     train_meter.iter_tic()
     data_size = len(train_loader)
@@ -194,6 +197,7 @@ def train_epoch(train_loader, model, optimizer, train_meter, cur_epoch, cfg):
                     top1_err, top5_err, loss, lr, inputs[0].size(0) * cfg.NUM_GPUS
                 )
         train_meter.log_iter_stats(cur_epoch, cur_iter)
+        train_meter.tb_iter_stats(cur_epoch, cur_iter)
         train_meter.iter_tic()
     # Log epoch stats.
     train_meter.log_epoch_stats(cur_epoch)
@@ -314,6 +318,7 @@ def eval_epoch(val_loader, model, val_meter, cur_epoch, cfg):
         val_meter.iter_tic()
     # Log epoch stats.
     is_best_epoch = val_meter.log_epoch_stats(cur_epoch)
+    val_meter.tb_epoch_stats(cur_epoch)
     val_meter.reset()
     return is_best_epoch
 
@@ -364,7 +369,10 @@ def train(cfg):
         misc.log_model_info(model, cfg, is_train=True)
 
     if cfg.BN.FREEZE:
-        model.module.freeze_fn('bn_parameters')
+        try:
+            model.module.freeze_fn('bn_parameters')
+        except:
+            model.freeze_fn('bn_parameters')
 
     # Construct the optimizer.
     optimizer = optim.construct_optimizer(model, cfg)

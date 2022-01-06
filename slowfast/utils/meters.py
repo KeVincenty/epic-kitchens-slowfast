@@ -9,6 +9,8 @@ import os
 from collections import defaultdict, deque
 import torch
 from fvcore.common.timer import Timer
+from torch.utils.tensorboard import SummaryWriter
+import slowfast.utils.distributed as du
 
 import slowfast.datasets.ava_helper as ava_helper
 import slowfast.utils.logging as logging
@@ -621,6 +623,7 @@ class EPICTrainMeter(object):
             cfg (CfgNode): configs.
         """
         self._cfg = cfg
+        self.tb_writer = SummaryWriter(log_dir=cfg.LOG_DIR)
         self.epoch_iters = epoch_iters
         self.MAX_EPOCH = cfg.SOLVER.MAX_EPOCH * epoch_iters
         self.iter_timer = Timer()
@@ -751,6 +754,33 @@ class EPICTrainMeter(object):
         }
         logging.log_json_stats(stats)
 
+    def tb_iter_stats(self, cur_epoch, cur_iter):
+        """
+        write the stats of the current iteration to tensorboard
+        Args:
+            cur_epoch (int): the number of current epoch.
+            cur_iter (int): the number of current iteration.
+        """
+        if not du.is_master_proc(self._cfg.NUM_GPUS *self._cfg.NUM_SHARDS):
+            return
+
+        if (cur_iter + 1) % self._cfg.LOG_PERIOD != 0:
+            return
+
+        global_step = cur_epoch * self.epoch_iters + cur_iter 
+
+        self.tb_writer.add_scalar("train/verb_top1_acc", self.mb_verb_top1_acc.get_win_median(), global_step=global_step)
+        self.tb_writer.add_scalar("train/verb_top5_acc", self.mb_verb_top5_acc.get_win_median(), global_step=global_step)
+        self.tb_writer.add_scalar("train/noun_top1_acc", self.mb_noun_top1_acc.get_win_median(), global_step=global_step)
+        self.tb_writer.add_scalar("train/noun_top5_acc", self.mb_noun_top5_acc.get_win_median(), global_step=global_step)
+        self.tb_writer.add_scalar("train/top1_acc", self.mb_top1_acc.get_win_median(), global_step=global_step)
+        self.tb_writer.add_scalar("train/top5_acc", self.mb_top5_acc.get_win_median(), global_step=global_step)
+        self.tb_writer.add_scalar("train/verb_loss", self.loss_verb.get_win_median(), global_step=global_step)
+        self.tb_writer.add_scalar("train/noun_loss", self.loss_noun.get_win_median(), global_step=global_step)
+        self.tb_writer.add_scalar("train/loss", self.loss.get_win_median(), global_step=global_step)
+        self.tb_writer.add_scalar("lr", self.lr, global_step=global_step)
+
+
     def log_epoch_stats(self, cur_epoch):
         """
         Log the stats of the current epoch.
@@ -803,6 +833,7 @@ class EPICValMeter(object):
             cfg (CfgNode): configs.
         """
         self._cfg = cfg
+        self.tb_writer = SummaryWriter(log_dir=cfg.LOG_DIR)
         self.max_iter = max_iter
         self.iter_timer = Timer()
         # Current minibatch accuracies (smoothed over a window).
@@ -950,7 +981,31 @@ class EPICValMeter(object):
         logging.log_json_stats(stats)
 
         return is_best_epoch
+    
+    def tb_epoch_stats(self, cur_epoch):
+        """
+        write the stats of the current epoch to tensorboard
+        Args:
+            cur_epoch (int): the number of current epoch.
+            cur_iter (int): the number of current iteration.
+        """
 
+        if not du.is_master_proc(self._cfg.NUM_GPUS *self._cfg.NUM_SHARDS):
+            return
+            
+        verb_top1_acc = self.num_verb_top1_cor / self.num_samples
+        verb_top5_acc = self.num_verb_top5_cor / self.num_samples
+        noun_top1_acc = self.num_noun_top1_cor / self.num_samples
+        noun_top5_acc = self.num_noun_top5_cor / self.num_samples
+        top1_acc = self.num_top1_cor / self.num_samples
+        top5_acc = self.num_top5_cor / self.num_samples
+
+        self.tb_writer.add_scalar("val/verb_top1_acc", verb_top1_acc, global_step=cur_epoch)
+        self.tb_writer.add_scalar("val/verb_top5_acc", verb_top5_acc, global_step=cur_epoch)
+        self.tb_writer.add_scalar("val/noun_top1_acc", noun_top1_acc, global_step=cur_epoch)
+        self.tb_writer.add_scalar("val/noun_top5_acc", noun_top5_acc, global_step=cur_epoch)
+        self.tb_writer.add_scalar("val/top1_acc", top1_acc, global_step=cur_epoch)
+        self.tb_writer.add_scalar("val/top5_acc", top5_acc, global_step=cur_epoch)
 
 class EPICTestMeter(object):
     """

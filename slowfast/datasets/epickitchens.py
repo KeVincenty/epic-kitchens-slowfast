@@ -97,7 +97,9 @@ class Epickitchens(torch.utils.data.Dataset):
         """
         if self.mode in ["train", "val", "train+val"]:
             # -1 indicates random sampling.
-            temporal_sample_index = -1
+            # temporal_sample_index = -1
+            # -2 indicates timestamp sampling.
+            temporal_sample_index = -2
             spatial_sample_index = -1
             min_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[0]
             max_scale = self.cfg.DATA.TRAIN_JITTER_SCALES[1]

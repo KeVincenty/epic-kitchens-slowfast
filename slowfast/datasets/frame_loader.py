@@ -30,14 +30,28 @@ def pack_frames_to_video_clip(cfg, video_record, temporal_sample_index, target_f
                                                  video_record.untrimmed_video_name)
     img_tmpl = "frame_{:010d}.jpg"
     fps, sampling_rate, num_samples = video_record.fps, cfg.DATA.SAMPLING_RATE, cfg.DATA.NUM_FRAMES
-    start_idx, end_idx = get_start_end_idx(
-        video_record.num_frames,
-        num_samples * sampling_rate * fps / target_fps,
-        temporal_sample_index,
-        cfg.TEST.NUM_ENSEMBLE_VIEWS,
-    )
-    start_idx, end_idx = start_idx + 1, end_idx + 1
-    frame_idx = temporal_sampling(video_record.num_frames,
+    if temporal_sample_index == -2:
+        video_size = min(cfg.DATA.TS_LR_FRAMES*2+1, video_record.single_timestamp+cfg.DATA.TS_LR_FRAMES+1, video_record.frames_to_end+cfg.DATA.TS_LR_FRAMES+1)
+        start_idx, end_idx = get_start_end_idx(
+            video_size,
+            num_samples * sampling_rate * fps / target_fps,
+            -1,
+            cfg.TEST.NUM_ENSEMBLE_VIEWS,
+        )
+        start_idx, end_idx = start_idx + 1, end_idx + 1
+        start_frame = max(video_record.single_timestamp-cfg.DATA.TS_LR_FRAMES, 0)
+        frame_idx = temporal_sampling(video_size,
+                                  start_idx, end_idx, num_samples,
+                                  start_frame=start_frame)
+    else:
+        start_idx, end_idx = get_start_end_idx(
+            video_record.num_frames,
+            num_samples * sampling_rate * fps / target_fps,
+            temporal_sample_index,
+            cfg.TEST.NUM_ENSEMBLE_VIEWS,
+        )
+        start_idx, end_idx = start_idx + 1, end_idx + 1
+        frame_idx = temporal_sampling(video_record.num_frames,
                                   start_idx, end_idx, num_samples,
                                   start_frame=video_record.start_frame)
     img_paths = [os.path.join(path_to_video, img_tmpl.format(idx.item())) for idx in frame_idx]

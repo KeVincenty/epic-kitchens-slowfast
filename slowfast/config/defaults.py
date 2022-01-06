@@ -231,6 +231,9 @@ _C.DATA.NUM_FRAMES = 8
 # The video sampling rate of the input clip.
 _C.DATA.SAMPLING_RATE = 8
 
+# The left/right frames from the single timestamp.
+_C.DATA.TS_LR_FRAMES = 100
+
 # The mean value of the video raw pixels across the R G B channels.
 _C.DATA.MEAN = [0.45, 0.45, 0.45]
 # List of input frame channel dimensions.
@@ -316,6 +319,9 @@ _C.SHARD_ID = 0
 
 # Output basedir.
 _C.OUTPUT_DIR = "./tmp"
+
+# Logs dir.
+_C.LOG_DIR = "./logs"
 
 # Note that non-determinism may still be present due to non-deterministic
 # operator implementations in GPU operator libraries.
